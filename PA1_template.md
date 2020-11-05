@@ -1,134 +1,148 @@
-# Reproducible Research: Peer Assessment 1  
+---
+title: "Reproducible Research Project 1"
+author: "Sylvia Badon"
+date: "11/3/2020"
+output: 
+  html_document: 
+    keep_md: yes
+---
 
 
-## Loading and preprocessing the data
 
-```r
-act<-read.csv("activity.csv", header=TRUE)
-act$dateF<-as.Date(act$date)
-library(plyr)
-library(ggplot2)
-```
-
-
-## What is mean total number of steps taken per day?  
-Calculate the total number of steps taken per day.
-
-```r
-sumSteps <- ddply(act, c("dateF"), summarise, sum = sum(steps, na.rm=TRUE))
-```
-
-Generate histogram.
-
-```r
-ggplot(data=sumSteps, aes(x=dateF, y=sum)) + 
-  geom_bar(stat="identity") +
-  xlab ("Date") +
-  ylab("Total steps") +
-  ggtitle("Total steps by day") +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-```
-
-![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3.png) 
-
+## Loading and Preprocessing the Data
 
 
 ```r
-meanTotSteps<-mean(sumSteps$sum)
-medianTotSteps<-median(sumSteps$sum)
-```
-The mean total number of steps taken per day is 9354.2295.  
-The median total number of steps taken per day is 10395.
-
-
-## What is the average daily activity pattern?  
-Calculate average number of steps taken per interval.
-
-```r
-avgSteps <- ddply(act, c("interval"), summarise, mean = mean(steps, na.rm=TRUE))
+d <- read.csv("I:/K99R00/Training/Accelerometry/R/Coursera Reproducible Research Course/Project 1/activity.csv")
+d$date <- as.Date(d$date)
 ```
 
-Generate time series plot.
 
-```r
-ggplot(data=avgSteps, aes(x=interval, y=mean)) +
-  geom_line() +
-  xlab("Interval") +
-  ylab("Mean steps") +
-  ggtitle("Mean steps per interval") +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-```
+## What is the mean total number of steps taken per day? 
 
-![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
-
-```r
-maxAvg<-avgSteps[which(avgSteps$mean==max(avgSteps$mean)),]$interval
-```
-The maximum average number of steps are taken during the 835 interval.
-
-
-## Imputing missing values  
-
-```r
-nmiss<-nrow(act[!complete.cases(act),])
-```
-There are 2304 total missing values in this dataset. 
-
-Fill in missing values using average number of steps taken for that interval.
-
-```r
-imputed<-merge(act, avgSteps, "interval")
-imputed$stepsI<-ifelse(is.na(imputed$steps), imputed$mean, imputed$steps)
-```
-
-Generate histogram using imputed data.
-
-```r
-sumStepsI <- ddply(imputed, c("dateF"), summarise, sum = sum(stepsI, na.rm=TRUE))
-ggplot(data=sumStepsI, aes(x=dateF, y=sum)) + 
-  geom_bar(stat="identity") +
-  xlab ("Date") +
-  ylab("Total steps") +
-  ggtitle("Total steps by day") +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-```
-
-![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10.png) 
+First, calculate the total number of steps per day, ignoring missing values.
 
 
 ```r
-meanTotStepsI<-mean(sumStepsI$sum)
-medianTotStepsI<-median(sumStepsI$sum)
+total <- tapply(d$steps, d$date, sum, na.rm=TRUE)
 ```
-The mean total number of steps taken per day is 1.0766 &times; 10<sup>4</sup>.  
-The median total number of steps taken per day is 1.0766 &times; 10<sup>4</sup>.
 
-These values are greater than the mean and median total number of steps taken per day calculated in the first part of the assignment.  In general, this method of imputation results in greater total steps taken per day. 
+Then plot total steps per day in a histogram.
 
-
-## Are there differences in activity patterns between weekdays and weekends?  
-Create new variable indicating weekday or weekend day.
 
 ```r
-imputed$wkday <- weekdays(imputed$dateF)
-imputed$typeday <- as.factor(ifelse(imputed$wkday=="Saturday" | imputed$wkday=="Sunday", "weekend", "weekday"))
+hist(total, main="Histogram of total steps per day", xlab="Total steps in one day")
 ```
 
-Generate panel plot.
+![](PA1_template_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+
+
+Finally, calculate the mean and median of the total number of steps per day. 
+
 
 ```r
-avgStepsDay <- ddply(imputed, c("interval", "typeday"), summarise, mean = mean(stepsI, na.rm=TRUE))
-ggplot(data=avgStepsDay, aes(x=interval, y=mean)) +
-  geom_line() +
-  xlab("Interval") +
-  ylab("Mean steps") +
-  ggtitle("Mean steps per interval by type of day") +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  facet_grid(typeday ~ .) 
+mean.steps <- as.integer(mean(total))
+median.steps <- median(total)
 ```
 
-![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
+The mean total steps per day was 9354. The median total steps per day was 10395.
+
+
+## What is the average daily activity pattern?
+
+Make a time series plot of the 5-minute interval and average number of steps taken, averaged across all days, ignoring missing values.
+
+
+```r
+by.int <- tapply(d$steps, d$interval, mean, na.rm=TRUE)
+by.int2 <- cbind(rownames(by.int), as.data.frame(by.int))
+colnames(by.int2) <- c("interval", "avg.steps")
+
+plot(by.int2$interval, by.int2$avg.steps, type="l", main="Average steps per 5-minute interval", xlab="5-minute interval", ylab="Average number of steps")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+
+```r
+max.int <- by.int2[by.int2$avg.steps==max(by.int2$avg.steps), 1]
+```
+
+The 835 interval contains the maximum number of average steps across all the days in the dataset.
+
+
+## Imputing Missing Values
+
+Calculate and report total number of missing values in the dataset.
+
+
+```r
+comp <- complete.cases(d)
+comp.case <- as.list(table(comp))
+num.miss <- comp.case$'FALSE'
+```
+
+The total number of rows with missing values in the dataset is 2304. 
+
+Fill in missing values with mean of that 5-min interval.
+
+
+```r
+with.intavg <- merge(d, by.int2, by="interval")
+with.intavg$steps <- ifelse(is.na(with.intavg$steps), with.intavg$avg.steps, with.intavg$steps)
+```
+
+Make a histogram of the total number of steps taken per day using the imputed data.
+
+
+```r
+total2 <- tapply(with.intavg$steps, with.intavg$date, sum)
+hist(total2, main="Histogram of total steps per day (with imputation)", xlab="Total steps in one day")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
+
+Calculate the mean and median of the total number of steps per day using the imputed dataset. 
+
+
+```r
+mean.steps2 <- as.integer(mean(total2))
+median.steps2 <- as.integer(median(total2))
+```
+
+After imputation, the mean total steps per day was 10766. The median total steps per day was 10766.
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable with two levels: weekday and weekend in the imputed dataset.
+
+
+```r
+with.intavg$day <- weekdays(with.intavg$date)
+wkdays <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+with.intavg$day2 <- factor(ifelse(with.intavg$day %in% wkdays, "weekday", "weekend"))
+```
+
+Make a time series plot of the 5-minute interval and average number of steps taken, averaged across all weekdays or weekend days.
+
+
+```r
+weekday.data <- with.intavg[with.intavg$day2=="weekday" , ]
+by.int_wkday <- tapply(weekday.data$steps, weekday.data$interval, mean, na.rm=TRUE)
+by.int2_wkday <- cbind(rownames(by.int_wkday), as.data.frame(by.int_wkday))
+colnames(by.int2_wkday) <- c("interval", "avg.steps")
+
+weekend.data <- with.intavg[with.intavg$day2=="weekend" , ]
+by.int_wkend <- tapply(weekend.data$steps, weekend.data$interval, mean, na.rm=TRUE)
+by.int2_wkend <- cbind(rownames(by.int_wkend), as.data.frame(by.int_wkend))
+colnames(by.int2_wkend) <- c("interval", "avg.steps")
+
+par(mar=c(4.0, 4.1, 4.1, 0.1), mfrow=c(2,1))
+plot(by.int2_wkend$interval, by.int2_wkend$avg.steps, type="l", main="Weekends", xlab=" ", ylab="Avg number of steps")
+plot(by.int2_wkday$interval, by.int2_wkday$avg.steps, type="l", main="Weekdays", xlab="5-minute interval", ylab="Avg number of steps")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
